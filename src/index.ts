@@ -1,39 +1,63 @@
-const obj = {
-  foo(...args) {
-    console.log(...args);
-  },
-};
+function log1(target: Function) {
+  for (const propertyName of Object.keys(target.prototype)) {
+    console.log(propertyName);
+    const descriptor = Object.getOwnPropertyDescriptor(
+      target.prototype,
+      propertyName
+    );
+    if (!descriptor) {
+      console.log("not descriptor", descriptor);
+      continue;
+    }
+    const isMethod = descriptor.value instanceof Function;
+    if (!isMethod) {
+      console.log("not method");
+      continue;
+    }
 
-function addAspect<T extends Object, B, A>(
-  obj: T,
-  method: string,
-  before: (args: B[]) => B[],
-  after: (result: A) => A
-): T {
-  return new Proxy(obj, {
-    get: (target, prop) => {
-      if (typeof target[prop] === "function" && String(prop) === method) {
-        return new Proxy(target[prop], {
-          apply(target, thisArg, args: B[]) {
-            const _args = before(args);
-            const result: A = target.apply(thisArg, _args);
-            const _result = after(result);
-            return _result;
-          },
-        });
-      }
-      return target[prop];
-    },
-  });
+    const originalMethod = descriptor.value;
+    descriptor.value = function (...args: any[]) {
+      console.log("The method args are: " + JSON.stringify(args));
+      const result = originalMethod.apply(this, args);
+      console.log("The return value is: " + result);
+      return result;
+    };
+
+    Object.defineProperty(target.prototype, propertyName, descriptor);
+  }
 }
 
-// _o.foo<typeof obj>(1, 2, 3);
+function Aspect<T extends { new (...constructorArgs: any[]) }>(
+  constructorFunction: T
+) {
+  let newConstructorFunction: any = function (...args) {
+    let func: any = function () {
+      return new constructorFunction(...args);
+    };
+    func.prototype = constructorFunction.prototype;
+    let result: any = new func();
+    return new Proxy(result, {
+      get(target, prop) {
+        const property = target[prop];
+        if (typeof property !== "function") {
+          return property;
+        }
+        console.log("Call function");
+        return property;
+      },
+    });
+  };
+  newConstructorFunction.prototype = constructorFunction.prototype;
+  return newConstructorFunction;
+}
 
-const _op = addAspect<typeof obj, number, number>(
-  obj,
-  "foo",
-  (args) => args,
-  (result) => result
-);
+@Aspect
+class UserService {
+  foo = 1;
+  auth(email: string, password: string) {
+    console.log(`${email}: ${password}`);
+  }
+}
 
-_op.foo(1, 2, 3);
+const user = new UserService();
+user.auth("foo", "bar");
