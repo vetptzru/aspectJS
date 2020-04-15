@@ -4,7 +4,7 @@ interface IConstructor {
 
 export interface IAspect<T> {
   onBefore?(...args: T[]): void;
-  onAfter?(): void;
+  onAfter?(...args: T[]): void;
   pattern: string | RegExp;
 }
 
