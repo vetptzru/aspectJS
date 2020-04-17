@@ -1,14 +1,6 @@
-interface IConstructor {
-  new (...constructorArgs: any[]);
-}
+import { IAspect, IConstructor } from './interfaces';
 
-export interface IAspect<T> {
-  onBefore?(...args: T[]): void;
-  onAfter?(...args: T[]): void;
-  pattern: string | RegExp;
-}
-
-function _Aspect<T extends IConstructor, A>(
+export function Wrapper<T extends IConstructor, A>(
   constructorFunction: T,
   aspect: IAspect<A>
 ) {
@@ -41,9 +33,4 @@ function _Aspect<T extends IConstructor, A>(
   };
   newConstructorFunction.prototype = constructorFunction.prototype;
   return newConstructorFunction;
-}
-
-export function Aspect<T>(aspect: IAspect<T>) {
-  return <C extends IConstructor>(constructor: C) =>
-    _Aspect(constructor, aspect);
 }
